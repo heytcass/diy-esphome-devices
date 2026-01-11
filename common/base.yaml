@@ -22,7 +22,7 @@ mdns:
 
 wifi:
   ap:
-    ssid: "${friendly_name} Setup"
+    ssid: "${device_name}"  # Use device_name (max 32 chars) not friendly_name
     password: "esphome123"  # Standard AP password for provisioning
 
 time:
