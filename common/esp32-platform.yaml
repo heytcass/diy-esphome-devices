@@ -1,0 +1,9 @@
+# ESP32 platform configuration
+
+substitutions:
+  verify_ssl: "true"  # ESP-IDF has proper TLS
+
+esp32:
+  framework:
+    type: esp-idf
+    version: recommended

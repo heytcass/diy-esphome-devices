@@ -1,0 +1,16 @@
+# ESPHome build artifacts
+.esphome/
+**/.esphome/
+
+# Direnv
+.direnv/
+
+# Secrets (never commit)
+secrets.yaml
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

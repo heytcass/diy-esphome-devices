@@ -1,0 +1,30 @@
+# Universal services for ALL devices
+
+logger:
+  level: INFO
+  logs:
+    component: ERROR
+
+api:
+  reboot_timeout: 15min
+  # No encryption - users add in their config if desired
+
+ota:
+  - platform: esphome
+  # No password - allows easy recovery
+
+safe_mode:
+
+captive_portal:
+
+mdns:
+  disabled: false
+
+wifi:
+  ap:
+    ssid: "${friendly_name} Setup"
+    password: "esphome123"  # Standard AP password for provisioning
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time

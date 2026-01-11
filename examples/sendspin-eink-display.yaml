@@ -1,0 +1,32 @@
+# Sendspin E-Ink Display - Example Configuration
+# Copy this and customize for your device
+#
+# First boot:
+# 1. Device creates WiFi AP: "<friendly_name> Setup"
+# 2. Connect with password: esphome123
+# 3. Open http://192.168.4.1
+# 4. Enter your WiFi credentials
+
+substitutions:
+  device_name: sendspin-eink-livingroom  # Change this!
+  friendly_name: "Living Room Sendspin"  # Change this!
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  min_version: 2025.12.2
+
+packages:
+  base:
+    url: https://github.com/your-org/diy-esphome-devices
+    ref: main
+    files:
+      - common/base.yaml
+      - common/esp32-platform.yaml
+      - common/diagnostics.yaml
+      - devices/sendspin/eink-display.yaml
+    refresh: 1d
+
+wifi:
+  ap:
+    ssid: "${friendly_name} Fallback"

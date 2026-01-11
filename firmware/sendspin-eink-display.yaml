@@ -1,0 +1,30 @@
+# Sendspin E-Ink Display - Firmware Build Configuration
+# For CI builds and ESPHome Dashboard adoption
+
+substitutions:
+  device_name: sendspin-eink-display
+  friendly_name: "Sendspin E-Ink Display"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: true  # Unique names for multiple devices
+  min_version: 2025.12.2
+  project:
+    name: "diy-esphome.sendspin-eink-display"
+    version: !env_var FIRMWARE_VERSION dev
+
+# Enable adoption in ESPHome Dashboard
+dashboard_import:
+  package_import_url: github://your-org/diy-esphome-devices/firmware/sendspin-eink-display.yaml@main
+  import_full_config: false
+
+packages:
+  base: !include ../common/base.yaml
+  platform: !include ../common/esp32-platform.yaml
+  diagnostics: !include ../common/diagnostics.yaml
+  hardware: !include ../devices/sendspin/eink-display.yaml
+
+# BLE provisioning (ESP32 only)
+esp32_improv:
+  authorizer: none  # No button required to authorize

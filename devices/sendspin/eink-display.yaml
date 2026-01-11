@@ -1,0 +1,294 @@
+# Sendspin E-Ink Display - Hardware Configuration
+# ESP32-S3 with 5.65" 7-color ACeP e-ink display
+
+substitutions:
+  firmware_name: "sendspin-eink-display"
+
+# Board configuration - ESP32-S3 with PSRAM
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+
+esphome:
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.arduino.memory_type: qio_opi
+
+psram:
+  mode: quad  # S3-Zero uses quad PSRAM (2MB)
+  speed: 80MHz
+
+# USB provisioning
+improv_serial:
+
+# Override base.yaml API timeout for e-ink (refresh blocks for 30+ seconds)
+api:
+  reboot_timeout: 0s
+
+# External components - pinned to specific commits
+external_components:
+  - source: github://pr#10212
+    components: [runtime_image, online_image]
+  - source:
+      type: git
+      url: https://github.com/esphome/esphome
+      ref: bff22983a390352360796f8e1363127e0cd1f898
+    components: [media_player]
+  - source:
+      type: git
+      url: https://github.com/esphome/esphome
+      ref: 71c8c6bdfc8006902eb0ea7b15bc86c575cef9be
+    components: [generic_image, mdns, sendspin]
+
+# Sendspin hub - metadata and artwork only (no audio playback)
+sendspin:
+  id: sendspin_hub
+
+# Album art from Sendspin - larger size to fill display width
+generic_image:
+  - platform: sendspin
+    id: sendspin_cover_art
+    format: jpg
+    type: rgb565
+    resize: 600x600
+    image_source: ALBUM
+    on_image_decoded:
+      - script.execute: debounced_refresh
+    on_image_error:
+      - logger.log: "Failed to decode cover art image"
+
+# Track if we're currently playing
+globals:
+  - id: is_playing
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: pending_refresh
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: boot_complete
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+# Debounce script - waits before refreshing display
+script:
+  - id: debounced_refresh
+    mode: restart  # Restart timer if called again
+    then:
+      - globals.set:
+          id: pending_refresh
+          value: 'true'
+      - delay: 5s  # Wait 5 seconds for all data to arrive
+      - globals.set:
+          id: pending_refresh
+          value: 'false'
+      - component.update: eink_display
+      - logger.log: "Display refreshed after debounce"
+
+  # Delayed boot initialization - let WiFi/mDNS stabilize first
+  - id: delayed_boot_init
+    then:
+      - delay: 10s  # Wait for WiFi and mDNS to fully initialize
+      - globals.set:
+          id: boot_complete
+          value: 'true'
+      - logger.log: "Boot complete, enabling display updates"
+      - component.update: eink_display  # Initial clock display
+
+# WiFi connect handler
+wifi:
+  on_connect:
+    - logger.log: "WiFi connected, starting delayed boot init"
+    - script.execute: delayed_boot_init
+
+# Update clock every 15 minutes when idle (only after boot completes)
+interval:
+  - interval: 15min
+    then:
+      - if:
+          condition:
+            lambda: 'return id(boot_complete) && !id(is_playing);'
+          then:
+            - component.update: eink_display
+            - logger.log: "Clock updated (15min interval)"
+
+# Media player - required for Sendspin connection (even without audio output)
+media_player:
+  - platform: sendspin
+    id: sendspin_media_player
+    name: Sendspin Player
+    on_play:
+      - globals.set:
+          id: is_playing
+          value: 'true'
+    on_pause:
+      - globals.set:
+          id: is_playing
+          value: 'false'
+      - script.execute: debounced_refresh
+    on_idle:
+      - globals.set:
+          id: is_playing
+          value: 'false'
+      - script.execute: debounced_refresh
+
+# Metadata text sensors
+text_sensor:
+  - platform: sendspin
+    id: track_title
+    type: title
+    on_value:
+      - script.execute: debounced_refresh
+
+  - platform: sendspin
+    id: track_artist
+    type: artist
+
+  - platform: sendspin
+    id: album_name
+    type: album
+
+# SPI bus for e-ink display
+spi:
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
+
+# Fonts for metadata display
+font:
+  - file: "gfonts://Roboto@500"
+    id: font_title
+    size: 22
+    glyphsets:
+      - GF_Latin_Core
+      - GF_Latin_Plus
+
+  - file: "gfonts://Roboto@400"
+    id: font_artist
+    size: 16
+    glyphsets:
+      - GF_Latin_Core
+      - GF_Latin_Plus
+
+  - file: "gfonts://Roboto@300"
+    id: font_idle_title
+    size: 48
+    glyphsets:
+      - GF_Latin_Core
+
+  - file: "gfonts://Roboto@300"
+    id: font_idle_subtitle
+    size: 24
+    glyphsets:
+      - GF_Latin_Core
+
+  - file: "gfonts://Roboto@100"
+    id: font_time
+    size: 96
+    glyphs: " 0123456789:AMP"
+
+  - file: "gfonts://Roboto@300"
+    id: font_date
+    size: 28
+    glyphsets:
+      - GF_Latin_Core
+
+# Colors for 7-color ACeP e-ink display
+color:
+  - id: my_black
+    red: 0%
+    green: 0%
+    blue: 0%
+  - id: my_white
+    red: 100%
+    green: 100%
+    blue: 100%
+
+# E-ink display - 5.65" 7-color ACeP
+display:
+  - platform: waveshare_epaper
+    id: eink_display
+    model: 5.65in-f
+    cs_pin: GPIO10
+    dc_pin: GPIO9
+    reset_pin: GPIO8
+    busy_pin:
+      number: GPIO7
+      inverted: true
+    rotation: 0
+    update_interval: never
+    lambda: |-
+      // Display: 600 wide x 448 tall
+
+      if (!id(is_playing)) {
+        // ============ IDLE SCREEN ============
+        // Clock display with date
+
+        // White background
+        it.filled_rectangle(0, 0, 600, 448, id(my_white));
+
+        // Draw a subtle border/frame
+        it.rectangle(20, 20, 560, 408, id(my_black));
+
+        // Time - large centered clock
+        it.strftime(300, 160, id(font_time), id(my_black), TextAlign::CENTER, "%H:%M", id(homeassistant_time).now());
+
+        // Date - below time
+        it.strftime(300, 260, id(font_date), id(my_black), TextAlign::CENTER, "%A, %B %d", id(homeassistant_time).now());
+
+        // Small "Sendspin" branding at bottom
+        it.print(300, 380, id(font_idle_subtitle), id(my_black), TextAlign::CENTER, "Sendspin");
+
+      } else {
+        // ============ NOW PLAYING SCREEN ============
+        // Layout: Full-width art at top, 56px black bar with metadata at bottom
+
+        // Fill entire screen with black first
+        it.filled_rectangle(0, 0, 600, 448, id(my_black));
+
+        // Draw album art at top-left (600x600 image, only top portion visible)
+        it.image(0, 0, id(sendspin_cover_art));
+
+        // Draw black bar for metadata area
+        it.filled_rectangle(0, 392, 600, 56, id(my_black));
+
+        // Get metadata
+        std::string title = id(track_title).state;
+        std::string artist = id(track_artist).state;
+        std::string album = id(album_name).state;
+
+        if (title.empty()) {
+          title = "Unknown Track";
+        }
+
+        if (title.length() > 45) {
+          title = title.substr(0, 42) + "...";
+        }
+
+        std::string subtitle;
+        if (!artist.empty() && !album.empty()) {
+          subtitle = artist + " - " + album;
+        } else if (!artist.empty()) {
+          subtitle = artist;
+        } else if (!album.empty()) {
+          subtitle = album;
+        }
+
+        if (subtitle.length() > 60) {
+          subtitle = subtitle.substr(0, 57) + "...";
+        }
+
+        // Draw title (white text on black bar)
+        it.print(12, 400, id(font_title), id(my_white), TextAlign::TOP_LEFT, title.c_str());
+
+        // Draw artist/album
+        if (!subtitle.empty()) {
+          it.print(12, 424, id(font_artist), id(my_white), TextAlign::TOP_LEFT, subtitle.c_str());
+        }
+      }
