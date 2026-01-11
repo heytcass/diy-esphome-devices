@@ -1,35 +1,33 @@
-# Sendspin E-Ink Display - Firmware Build Configuration
-# Roles: base + metadata + artwork + player (display-only)
+# M5Stack Tab5 with Sendspin - Firmware Build Configuration
+# Original config by @balloob (Paulus Schoutsen)
+# Roles: base + metadata + artwork + player + controller (full featured)
 
 substitutions:
-  device_name: sendspin-eink-display
-  friendly_name: "Sendspin E-Ink Display"
+  device_name: sendspin-tab5
+  friendly_name: "Sendspin Tab5"
 
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
   name_add_mac_suffix: true
-  min_version: 2025.12.2
+  min_version: 2025.5.0
   project:
-    name: "diy-esphome.sendspin-eink-display"
+    name: "diy-esphome.sendspin-tab5"
     version: !env_var FIRMWARE_VERSION dev
 
 dashboard_import:
-  package_import_url: github://heytcass/diy-esphome-devices/firmware/sendspin-eink-display.yaml@main
+  package_import_url: github://heytcass/diy-esphome-devices/firmware/sendspin-tab5.yaml@main
   import_full_config: false
 
 packages:
   # Core infrastructure
   base: !include ../common/base.yaml
-  platform: !include ../common/esp32-platform.yaml
   diagnostics: !include ../common/diagnostics.yaml
-  # Sendspin roles (display-only: metadata + artwork + player for state)
+  # Sendspin roles (full featured: all roles)
   sendspin_base: !include ../common/sendspin/base.yaml
   sendspin_metadata: !include ../common/sendspin/metadata.yaml
   sendspin_artwork: !include ../common/sendspin/artwork.yaml
   sendspin_player: !include ../common/sendspin/player.yaml
+  sendspin_controller: !include ../common/sendspin/controller.yaml
   # Device hardware
-  hardware: !include ../devices/sendspin/eink-display.yaml
-
-esp32_improv:
-  authorizer: none
+  hardware: !include ../devices/sendspin/tab5.yaml
