@@ -3,17 +3,13 @@
 # "controls the Sendspin group this client is part of"
 #
 # Provides:
-#   - Template buttons for play, pause, stop, toggle
+#   - Template buttons for play, pause, stop, toggle, next, previous
 #   - Volume control number
 #
 # Requires: player.yaml (for sendspin_media_player)
 #
 # Device configs can wire these to physical buttons, touch gestures,
 # or expose them directly to Home Assistant.
-#
-# Note: Next/previous track control is not directly exposed by the
-# Sendspin component. Use Home Assistant automations or Music Assistant
-# for track navigation.
 
 button:
   - platform: template
@@ -43,6 +39,20 @@ button:
     icon: "mdi:play-pause"
     on_press:
       - media_player.toggle: sendspin_media_player
+
+  - platform: template
+    id: sendspin_next
+    name: "Next Track"
+    icon: "mdi:skip-next"
+    on_press:
+      - media_player.next: sendspin_media_player
+
+  - platform: template
+    id: sendspin_previous
+    name: "Previous Track"
+    icon: "mdi:skip-previous"
+    on_press:
+      - media_player.previous: sendspin_media_player
 
 number:
   - platform: template
